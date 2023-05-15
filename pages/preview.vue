@@ -6,10 +6,11 @@
           <td> Browse Store </td>
         </tr>
         <tr v-for="item in this.items">
-          <td class="statitle">{{item.name}}</td>
-          <td class="statval">{{item.price_range.minimum_price.regular_price.value}}
-            {{item.price_range.minimum_price.regular_price.currency}}
-            <button v-on:click="addItemToCart(item)">+</button>
+          <td> <img class="product-img" :src="item.image.url"> </td>
+          <td class="statitle">{{item.name}}</td> 
+          <td class="statval">{{item.price_range.minimum_price.regular_price.value}} 
+          {{item.price_range.minimum_price.regular_price.currency}} 
+          <button v-on:click="addItemToCart(item)">+</button>
           </td>
         </tr>
       </table>
@@ -27,7 +28,6 @@
               <p class="order-summary-list-list-item-price">50.00</p>
             </li>
 
-
             <li class="order-summary-list-list-item">
               <img
                 src="~/assets/images/headphones.png"
@@ -38,31 +38,31 @@
               <p class="order-summary-list-list-item-price">50.00</p>
             </li>
 
-
             <li class="order-summary-list-list-item" v-if="cartItems.length" v-for="prod in this.cartItems">
-              <p class="order-summary-list-list-item-title"> ({{prod.quantity}}) {{prod.product.name}}</p>
-              <p class="order-summary-list-list-item-title">
+              <img class="product-img" :src="prod.product.image.url">
+              <p class="order-summary-list-list-item-title"> ({{prod.quantity}}) {{prod.product.name}}</p> 
+              <p class="order-summary-list-list-item-title"> 
+                <p>{{prod.product.price_range.minimum_price.regular_price.value}} 
+          {{prod.product.price_range.minimum_price.regular_price.currency}} </p>
                 <button v-on:click="addItemToCart(prod.product)">+</button>
                 <button v-on:click="">-</button>
               </p>
             </li>
 
-
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title">CartID</p>
+              <p class="order-summary-list-list-item-title">CartID</p> 
               <p class="order-summary-list-list-item-price">{{cartId}}</p>
             </li>
 
-
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title">GuestEmail</p>
+              <p class="order-summary-list-list-item-title">GuestEmail</p> 
               <p class="order-summary-list-list-item-price">{{guestEmail}}</p>
             </li>
           </ul>
         </div>
         <div class="cart-footer">
           <span class="cart-footer-label">Total:</span>
-          <span class="cart-footer-amount">100.00</span>
+          <span class="cart-footer-amount">{{cartTotal}}</span>
           <nuxt-link :to="`/checkout/${type}`">
             <p class="button">Continue to checkout</p>
           </nuxt-link>
@@ -71,7 +71,6 @@
     </section>
   </main>
 </template>
-
 
 <script>
 export default {
@@ -89,55 +88,47 @@ export default {
       guestEmail: '',
       items: [],
       cartItems: [],
+      cartTotal: "0EUR",
     }
   },
 
-
   async mounted() {
     this.storage();
-
 
     await this.getCartId();
     await this.addGuestToCart();
     await this.listStoreItems();
 
-
     localStorage.setItem('cart', this.cartId);
-
 
   },
 
-
   methods: {
-    storage() {
+   storage() {
       localStorage.setItem('url', 'https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io');
       localStorage.setItem('bearer', "mbvjlftxgpunwaiqi0tfsn2dhkhxpips");
     },
-
 
     async getCartId() {
       try {
         const host = this.url;
         const bearer = this.bearer;
 
-
         // Create cart data
         const data = JSON.stringify({
           query: `mutation{createEmptyCart}`,
         });
 
-
         const response = await this.sendGraphQLReq(host, bearer, data);
-
+        
         this.cartId = response.data.createEmptyCart;
         return response;
-
+        
       } catch (error) {
         console.error(error);
         alert("Error occurred. Look at console for details");
       }
     },
-
 
     async addGuestToCart() {
       try {
@@ -145,26 +136,21 @@ export default {
         const bearer = this.bearer;
         const cartId = this.cartId;
 
-
         const data = JSON.stringify({
-          query:  'mutation{setGuestEmailOnCart( input: { cart_id: ' + '"' + cartId + '"' + ' email: "developer@admin.com"}) {cart { email}}}',
+        query:  'mutation{setGuestEmailOnCart( input: { cart_id: ' + '"' + cartId + '"' + ' email: "developer@admin.com"}) {cart { email}}}',
         });
-
 
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.guestEmail = response.data.setGuestEmailOnCart.cart.email;
 
-
         return response;
-
 
       } catch (error) {
         console.error(error);
         alert("Error occurred. Look at console for details");
       }
-
+        
     },
-
 
     async listStoreItems() {
       try{
@@ -172,20 +158,15 @@ export default {
         const bearer = this.bearer;
 
 
-
-
         const data = JSON.stringify({
-          query:  `{products( search: "Messenger" filter: { price: { to: "50" } } pageSize: 25 sort: { price: DESC }) { items { name sku price_range { minimum_price { regular_price { value currency } } }} total_count page_info { page_size }}}`,
+        query:  `{products( search: "Messenger" filter: { price: { to: "50" } } pageSize: 25 sort: { price: DESC }) { items { name sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } }} total_count page_info { page_size }}}`,
         });
-
 
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.items = response.data.products.items;
         // this.logStatus();
 
-
         return response;
-
 
       } catch (error) {
         console.error(error);
@@ -193,10 +174,8 @@ export default {
       }
     },
 
-
     async addItemToCart(item) {
       try {
-
 
         const host = this.url;
         const bearer = this.bearer;
@@ -205,24 +184,23 @@ export default {
         const quantity = 1;
         const products = '{ quantity:' + quantity + ' sku:' + '"' + sku + '"' +'}';
 
-
         // Add items to cart
         const data = JSON.stringify({
-          query: `mutation{ addProductsToCart( cartId: ` + '"' + cartId + '"' + ` cartItems: [` + products + `] ) {  cart {  items { product { name  sku } quantity }  } } }`,
+        query: `mutation{ addProductsToCart( cartId: ` + '"' + cartId + '"' + ` cartItems: [` + products + `] ) {  cart {  items { product { name  sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } } } quantity } prices { grand_total { value currency } }  } } }`,
         });
-
 
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.cartItems = response.data.addProductsToCart.cart.items;
-        return response;
+        this.cartTotal = response.data.addProductsToCart.cart.prices.grand_total.value + response.data.addProductsToCart.cart.prices.grand_total.currency;
+        console.log(response.data.addProductsToCart.cart.prices.grand_total.value + response.data.addProductsToCart.cart.prices.grand_total.currency);
 
+        return response;
 
       } catch (error) {
         console.error(error);
         // alert("Error occurred. Look at console for details");
       }
     },
-
 
     async sendGraphQLReq(host, bearer, data) {
       try {
@@ -242,13 +220,12 @@ export default {
           //.then((result) => console.log( result))
           .then(result => response = result)
         return response;
-
+        
       } catch (error) {
         console.error(error);
         alert("Error occurred. Look at console for details");
       }
     },
-
 
   },
 };
