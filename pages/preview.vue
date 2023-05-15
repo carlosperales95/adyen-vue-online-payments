@@ -1,73 +1,91 @@
 <template>
   <main class="preview-page">
     <section class="cart">
-      <table>
-        <tr v-if="items.length">
-          <td> Browse Store </td>
-        </tr>
-        <tr v-for="item in this.items">
-          <td> <img class="product-img" :src="item.image.url"> </td>
-          <td class="statitle">{{item.name}}</td> 
-          <td class="statval">{{item.price_range.minimum_price.regular_price.value}} 
-          {{item.price_range.minimum_price.regular_price.currency}} 
-          <button v-on:click="addItemToCart(item)">+</button>
-          </td>
-        </tr>
-      </table>
+        <div class="store-container">
+          <div 
+            class="item-container" 
+            v-for="item in this.items"
+          >
+            <img 
+              class="product-img" 
+              :src="item.image.url"
+            >
+            <div class="statitle">
+              {{item.name}}
+            </div> 
+            <div class="statval"> 
+              {{item.price_range.minimum_price.regular_price.value}} 
+              {{item.price_range.minimum_price.regular_price.currency}} 
+            <button v-on:click="addItemToCart(item)">
+              Add to Cart
+            </button>
+            </div>
+          </div>
+        </div>
       <div class="summary-column">
         <div class="order-summary">
-          <h2>Cart</h2>
+          <h2>
+            My Cart
+          </h2>
           <ul class="order-summary-list">
-            <li class="order-summary-list-list-item">
-              <img
-                src="~/assets/images/sunglasses.png"
-                class="order-summary-list-list-item-image"
-                alt
+            <li 
+              class="order-summary-list-list-item" 
+              v-if="cartItems.length" 
+              v-for="prod in this.cartItems"
+            >
+              <img 
+                class="product-img" 
+                :src="prod.product.image.url"
               />
-              <p class="order-summary-list-list-item-title">Sunglasses</p>
-              <p class="order-summary-list-list-item-price">50.00</p>
-            </li>
-
-            <li class="order-summary-list-list-item">
-              <img
-                src="~/assets/images/headphones.png"
-                class="order-summary-list-list-item-image"
-                alt
-              />
-              <p class="order-summary-list-list-item-title">Headphones</p>
-              <p class="order-summary-list-list-item-price">50.00</p>
-            </li>
-
-            <li class="order-summary-list-list-item" v-if="cartItems.length" v-for="prod in this.cartItems">
-              <img class="product-img" :src="prod.product.image.url">
-              <p class="order-summary-list-list-item-title"> ({{prod.quantity}}) {{prod.product.name}}</p> 
               <p class="order-summary-list-list-item-title"> 
-                <p>{{prod.product.price_range.minimum_price.regular_price.value}} 
-          {{prod.product.price_range.minimum_price.regular_price.currency}} </p>
-                <button v-on:click="addItemToCart(prod.product)">+</button>
-                <button v-on:click="">-</button>
+                {{prod.product.name}}
+              </p> 
+              <p class="order-summary-list-list-item-price"> 
+                {{prod.product.price_range.minimum_price.regular_price.value}}
+                {{prod.product.price_range.minimum_price.regular_price.currency}} 
+                ({{prod.quantity}})
               </p>
+              <button 
+                class="order-summary-list-list-item-button" 
+                v-on:click="addItemToCart(prod.product)"
+              > 
+                + 
+              </button>
+              <button 
+                class="order-summary-list-list-item-button" 
+                v-on:click=""
+              >
+               - 
+              </button>
             </li>
 
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title">CartID</p> 
-              <p class="order-summary-list-list-item-price">{{cartId}}</p>
+              <p class="order-summary-list-list-item-title"> CartID </p> 
+              <p class="order-summary-list-list-item-price"> {{cartId}} </p>
             </li>
 
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title">GuestEmail</p> 
-              <p class="order-summary-list-list-item-price">{{guestEmail}}</p>
+              <p class="order-summary-list-list-item-title"> GuestEmail </p> 
+              <p class="order-summary-list-list-item-price"> {{guestEmail}} </p>
             </li>
           </ul>
         </div>
+        
         <div class="cart-footer">
-          <span class="cart-footer-label">Total:</span>
-          <span class="cart-footer-amount">{{cartTotal}}</span>
+          <span class="cart-footer-label"> Total: </span>
+          <span class="cart-footer-amount"> {{cartTotal}} </span>
           <nuxt-link :to="`/checkout/${type}`">
             <p class="button">Continue to checkout</p>
           </nuxt-link>
         </div>
       </div>
+
+      <button 
+        class="sum-toggle" 
+        v-on:click="hideSummary()"
+      >
+       i 
+      </button>
     </section>
   </main>
 </template>
@@ -109,6 +127,15 @@ export default {
       localStorage.setItem('bearer', "mbvjlftxgpunwaiqi0tfsn2dhkhxpips");
     },
 
+    hideSummary() {
+      if (document.getElementsByClassName("hidden").length) {
+        document.getElementsByClassName("summary-column")[0].classList.remove("hidden");;
+      }
+      else {
+        document.getElementsByClassName("summary-column")[0].classList.add("hidden");;
+      }  
+    },
+
     async getCartId() {
       try {
         const host = this.url;
@@ -136,8 +163,13 @@ export default {
         const bearer = this.bearer;
         const cartId = this.cartId;
 
+        const email = "developer@admin.com";
+
         const data = JSON.stringify({
-        query:  'mutation{setGuestEmailOnCart( input: { cart_id: ' + '"' + cartId + '"' + ' email: "developer@admin.com"}) {cart { email}}}',
+        query:  'mutation{setGuestEmailOnCart( input: { cart_id: ' 
+                + '"' + cartId + '"' 
+                + ' email: '+ '"' + email 
+                + '"' + ' }) {cart { email }}}',
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
@@ -186,7 +218,10 @@ export default {
 
         // Add items to cart
         const data = JSON.stringify({
-        query: `mutation{ addProductsToCart( cartId: ` + '"' + cartId + '"' + ` cartItems: [` + products + `] ) {  cart {  items { product { name  sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } } } quantity } prices { grand_total { value currency } }  } } }`,
+        query: `mutation{ addProductsToCart( cartId: ` 
+                + '"' + cartId + '"' 
+                + ` cartItems: [` + products 
+                + `] ) {  cart {  items { product { name  sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } } } quantity } prices { grand_total { value currency } }  } } }`,
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);

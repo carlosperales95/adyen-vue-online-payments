@@ -1,6 +1,30 @@
 <template>
   <div>
     <div id="payment-page">
+      <div class="forms">
+        <form>
+          <label for="fname">First name:</label><br>
+          <input type="text" id="fname" name="fname"><br>
+          <label for="lname">Last name:</label><br>
+          <input type="text" id="lname" name="lname">
+          <label for="femail">Email:</label><br>
+          <input type="text" id="femail" name="femail">
+          <label for="fphone">Phone:</label><br>
+          <input type="text" id="fphone" name="fphone">
+        </form> 
+        <form>
+          <label for="fname">Street:</label><br>
+          <input type="text" id="fname" name="fname"><br>
+          <label for="lname">City:</label><br>
+          <input type="text" id="lname" name="lname">
+          <label for="fregion">Region</label><br>
+          <input type="text" id="fregion" name="fregion">
+          <label for="fpostcode">Postcode</label><br>
+          <input type="text" id="fpostcode" name="fpostcode">
+          <label for="fcountry">Country</label><br>
+          <input type="text" id="fcountry" name="fcountry">
+        </form> 
+      </div>
       <div class="btnarea"> 
         <button class="graphbtn" @click="setShippingAdress()">+ Shipping Ad</button>
         <button class="graphbtn" @click="setBillingAddress()">+ Billing Ad</button>
