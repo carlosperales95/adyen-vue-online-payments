@@ -562,3 +562,30 @@ tr {
   color: #f7f8f9;
 }
 
+.forms {
+  width: 80%;
+}
+
+.forms input {
+  width: 30%;
+  margin-bottom: 2%;
+}
+
+.forms label {
+  color: #0abf53;
+  width: 30%;
+}
+
+.forms button {
+  background-color: #3a4a5c;
+  color: #f7f8f9;
+  border: none;
+  border-radius: 10px;
+  width: 10%;
+  padding: 1%;
+  margin-bottom: 2%;
+}
+
+form {
+  padding: 5%;
+}

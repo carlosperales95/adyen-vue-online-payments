@@ -2,28 +2,34 @@
   <div>
     <div id="payment-page">
       <div class="forms">
-        <form>
-          <label for="fname">First name:</label><br>
-          <input type="text" id="fname" name="fname"><br>
-          <label for="lname">Last name:</label><br>
-          <input type="text" id="lname" name="lname">
-          <label for="femail">Email:</label><br>
-          <input type="text" id="femail" name="femail">
-          <label for="fphone">Phone:</label><br>
-          <input type="text" id="fphone" name="fphone">
-        </form> 
-        <form>
-          <label for="fname">Street:</label><br>
-          <input type="text" id="fname" name="fname"><br>
-          <label for="lname">City:</label><br>
-          <input type="text" id="lname" name="lname">
-          <label for="fregion">Region</label><br>
-          <input type="text" id="fregion" name="fregion">
-          <label for="fpostcode">Postcode</label><br>
-          <input type="text" id="fpostcode" name="fpostcode">
-          <label for="fcountry">Country</label><br>
-          <input type="text" id="fcountry" name="fcountry">
-        </form> 
+        <div class="form-shopper-data">
+          <form>
+            <label for="fname">First name:</label>
+            <label for="lname">Last name:</label><br>
+            <input type="text" id="fname" name="fname">
+            <input type="text" id="lname" name="lname"><br>
+            <label for="femail">Email:</label>
+            <label for="fphone">Phone:</label><br>
+            <input type="text" id="femail" name="femail">
+            <input type="text" id="fphone" name="fphone"><br>
+            <button type='button' @click="setFormShopperData()">submit</button> 
+          </form> 
+        </div>
+        <div class="form-shipping-data">
+          <form>
+            <label for="fstreet">Street:</label>
+            <label for="fpostcode">Postcode</label><br>
+            <input type="text" id="fstreet" name="fstreet">
+            <input type="text" id="fpostcode" name="fpostcode"><br>
+            <label for="fcity">City:</label>
+            <label for="fregion">Region</label><br>
+            <input type="text" id="fcity" name="fcity">
+            <input type="text" id="fregion" name="fregion"><br>
+            <label for="fcountry">Country</label><br>
+            <input type="text" id="fcountry" name="fcountry"><br>
+            <button type='button' @click="setFormShippingAddress()">submit</button>
+          </form> 
+        </div>
       </div>
       <div class="btnarea"> 
         <button class="graphbtn" @click="setShippingAdress()">+ Shipping Ad</button>
@@ -142,6 +148,7 @@ export default {
       adyenStatusResponse: '',
       orderId:'',
       stateData:'',
+      shopperData: '',
     }
   },
   head() {
@@ -166,9 +173,9 @@ export default {
     // Create an instance of Drop-in and mount it
     //checkout.create(this.type).mount(this.$refs[this.type]);
 
-    await this.setShippingAdress();
-    await this.setBillingAddress();
-    await this.setShippingMethod();
+    // await this.setShippingAdress();
+    // await this.setBillingAddress();
+    // await this.setShippingMethod();
 
   },
   methods: {
@@ -178,7 +185,36 @@ export default {
       this.cartId = localStorage.getItem('cart');
     },
 
-    async addItemToCart(item) {
+  setFormShopperData() {
+    let firstName = document.getElementById('fname').value;
+    let lastName = document.getElementById('lname').value;
+    let email = document.getElementById('femail').value;
+    let phone = document.getElementById('fphone').value;
+
+    console.log(firstName + lastName + email + phone);
+  },
+
+  setFormShippingAddress() {
+    let shippingStreet = document.getElementById('fstreet').value;
+    let shippingPostCode = document.getElementById('fpostcode').value;
+    let shippingCity = document.getElementById('fcity').value;
+    let shippingRegion = document.getElementById('fregion').value;
+    let shippingCountry = document.getElementById('fcountry').value;
+
+    console.log( shippingStreet + shippingPostCode + shippingCity + shippingRegion + shippingCountry);
+
+  },
+
+  setFormBillingAddress() {
+    let firstName = document.getElementById('fname').value;
+    let lastName = document.getElementById('lname').value;
+    let email = document.getElementById('femail').value;
+    let phone = document.getElementById('fphone').value;
+
+    console.log(firstName + lastName + email + phone);
+  },
+
+  async addItemToCart(item) {
       try {
 
         const host = this.url;
