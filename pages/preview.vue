@@ -1,76 +1,76 @@
 <template>
   <main class="preview-page">
     <section class="cart">
-        <div class="store-container">
-          <div 
-            class="item-container" 
-            v-for="item in this.items"
+      <div class="store-container">
+        <div
+          class="item-container"
+          v-for="item in this.items"
+        >
+          <img
+            class="product-img"
+            :src="item.image.url"
           >
-            <img 
-              class="product-img" 
-              :src="item.image.url"
-            >
-            <div class="statitle">
-              {{item.name}}
-            </div> 
-            <div class="statval"> 
-              {{item.price_range.minimum_price.regular_price.value}} 
-              {{item.price_range.minimum_price.regular_price.currency}} 
+          <div class="statitle">
+            {{item.name}}
+          </div>
+          <div class="statval">
+            {{item.price_range.minimum_price.regular_price.value}}
+            {{item.price_range.minimum_price.regular_price.currency}}
             <button v-on:click="addItemToCart(item)">
               Add to Cart
             </button>
-            </div>
           </div>
         </div>
+      </div>
       <div class="summary-column">
         <div class="order-summary">
           <h2>
             My Cart
           </h2>
           <ul class="order-summary-list">
-            <li 
-              class="order-summary-list-list-item" 
-              v-if="cartItems.length" 
+            <li
+              class="order-summary-list-list-item"
+              v-if="cartItems.length"
               v-for="prod in this.cartItems"
             >
-              <img 
-                class="product-img" 
+              <img
+                class="product-img"
                 :src="prod.product.image.url"
               />
-              <p class="order-summary-list-list-item-title"> 
+              <p class="order-summary-list-list-item-title">
                 {{prod.product.name}}
-              </p> 
-              <p class="order-summary-list-list-item-price"> 
+              </p>
+              <p class="order-summary-list-list-item-price">
                 {{prod.product.price_range.minimum_price.regular_price.value}}
-                {{prod.product.price_range.minimum_price.regular_price.currency}} 
+                {{prod.product.price_range.minimum_price.regular_price.currency}}
                 ({{prod.quantity}})
               </p>
-              <button 
-                class="order-summary-list-list-item-button" 
+              <button
+                class="order-summary-list-list-item-button"
                 v-on:click="addItemToCart(prod.product)"
-              > 
-                + 
+              >
+                +
               </button>
-              <button 
-                class="order-summary-list-list-item-button" 
+              <button
+                class="order-summary-list-list-item-button"
                 v-on:click=""
               >
-               - 
+                -
               </button>
             </li>
 
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title"> CartID </p> 
+              <p class="order-summary-list-list-item-title"> CartID </p>
               <p class="order-summary-list-list-item-price"> {{cartId}} </p>
             </li>
 
             <li class="order-summary-list-list-item">
-              <p class="order-summary-list-list-item-title"> GuestEmail </p> 
+              <p class="order-summary-list-list-item-title"> GuestEmail </p>
               <p class="order-summary-list-list-item-price"> {{guestEmail}} </p>
             </li>
           </ul>
         </div>
-        
+
         <div class="cart-footer">
           <span class="cart-footer-label"> Total: </span>
           <span class="cart-footer-amount"> {{cartTotal}} </span>
@@ -80,11 +80,11 @@
         </div>
       </div>
 
-      <button 
-        class="sum-toggle" 
+      <button
+        class="sum-toggle"
         v-on:click="hideSummary()"
       >
-       i 
+        i
       </button>
     </section>
   </main>
@@ -103,7 +103,6 @@ export default {
       url: "https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io",
       bearer: "mbvjlftxgpunwaiqi0tfsn2dhkhxpips",
       cartId: '',
-      guestEmail: '',
       items: [],
       cartItems: [],
       cartTotal: "0EUR",
@@ -114,7 +113,6 @@ export default {
     this.storage();
 
     await this.getCartId();
-    await this.addGuestToCart();
     await this.listStoreItems();
 
     localStorage.setItem('cart', this.cartId);
@@ -122,7 +120,7 @@ export default {
   },
 
   methods: {
-   storage() {
+    storage() {
       localStorage.setItem('url', 'https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io');
       localStorage.setItem('bearer', "mbvjlftxgpunwaiqi0tfsn2dhkhxpips");
     },
@@ -133,7 +131,7 @@ export default {
       }
       else {
         document.getElementsByClassName("summary-column")[0].classList.add("hidden");;
-      }  
+      }
     },
 
     async getCartId() {
@@ -147,42 +145,16 @@ export default {
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
-        
+
         this.cartId = response.data.createEmptyCart;
         return response;
-        
+
       } catch (error) {
         console.error(error);
         alert("Error occurred. Look at console for details");
       }
     },
 
-    async addGuestToCart() {
-      try {
-        const host = this.url;
-        const bearer = this.bearer;
-        const cartId = this.cartId;
-
-        const email = "developer@admin.com";
-
-        const data = JSON.stringify({
-        query:  'mutation{setGuestEmailOnCart( input: { cart_id: ' 
-                + '"' + cartId + '"' 
-                + ' email: '+ '"' + email 
-                + '"' + ' }) {cart { email }}}',
-        });
-
-        const response = await this.sendGraphQLReq(host, bearer, data);
-        this.guestEmail = response.data.setGuestEmailOnCart.cart.email;
-
-        return response;
-
-      } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
-      }
-        
-    },
 
     async listStoreItems() {
       try{
@@ -191,7 +163,7 @@ export default {
 
 
         const data = JSON.stringify({
-        query:  `{products( search: "Messenger" filter: { price: { to: "50" } } pageSize: 25 sort: { price: DESC }) { items { name sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } }} total_count page_info { page_size }}}`,
+          query:  `{products( search: "Messenger" filter: { price: { to: "50" } } pageSize: 25 sort: { price: DESC }) { items { name sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } }} total_count page_info { page_size }}}`,
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
@@ -218,10 +190,10 @@ export default {
 
         // Add items to cart
         const data = JSON.stringify({
-        query: `mutation{ addProductsToCart( cartId: ` 
-                + '"' + cartId + '"' 
-                + ` cartItems: [` + products 
-                + `] ) {  cart {  items { product { name  sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } } } quantity } prices { grand_total { value currency } }  } } }`,
+          query: `mutation{ addProductsToCart( cartId: `
+            + '"' + cartId + '"'
+            + ` cartItems: [` + products
+            + `] ) {  cart {  items { product { name  sku image { url label position disabled } price_range { minimum_price { regular_price { value currency } } } } quantity } prices { grand_total { value currency } }  } } }`,
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
@@ -229,6 +201,30 @@ export default {
         this.cartTotal = response.data.addProductsToCart.cart.prices.grand_total.value + response.data.addProductsToCart.cart.prices.grand_total.currency;
         console.log(response.data.addProductsToCart.cart.prices.grand_total.value + response.data.addProductsToCart.cart.prices.grand_total.currency);
 
+        return response;
+
+      } catch (error) {
+        console.error(error);
+        // alert("Error occurred. Look at console for details");
+      }
+    },
+
+    async removeItemFromCart(item) {
+      try {
+        const host = this.url;
+        const bearer = this.bearer;
+        const cartId = this.cartId;
+        const sku = item.sku;
+        const quantity = 1;
+        const products = '{ quantity:' + quantity + ' sku:' + '"' + sku + '"' +'}';
+
+        // Add items to cart
+        const data = JSON.stringify({
+          query: `mutation{ addProductsToCart( cartId: ` + cartId + ` cartItems: [` + products + `] ) {  cart {  items { product { name  sku } quantity }  } } }`,
+        });
+
+        const response = await this.sendGraphQLReq(host, bearer, data);
+        this.cartItems = response.data.addProductsToCart.cart.items;
         return response;
 
       } catch (error) {
@@ -255,7 +251,7 @@ export default {
           //.then((result) => console.log( result))
           .then(result => response = result)
         return response;
-        
+
       } catch (error) {
         console.error(error);
         alert("Error occurred. Look at console for details");

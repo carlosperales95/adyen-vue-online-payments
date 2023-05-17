@@ -569,11 +569,13 @@ tr {
 .forms input {
   width: 30%;
   margin-bottom: 2%;
+  margin-right: 5%;
 }
 
 .forms label {
   color: #0abf53;
   width: 30%;
+  margin-right: 5%;
 }
 
 .forms button {
@@ -586,6 +588,24 @@ tr {
   margin-bottom: 2%;
 }
 
+.forms #samebilling {
+  margin-bottom: 2%;
+  width: 5%;
+}
+
+.forms #samebilling-label {
+  width: 15%;
+}
+
+.forms h2 {
+  padding-bottom: 10px;
+  border-bottom: solid 1px #687282;
+}
+
 form {
   padding: 5%;
+}
+
+.collapsed form{
+  display: none;
 }
