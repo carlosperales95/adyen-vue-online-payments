@@ -34,14 +34,29 @@
             <button type='button' @click="setFormShippingAddress()">submit</button>
           </form>
         </div>
-      </div>
-      <div class="btnarea">
-        <button class="graphbtn" @click="setShippingAdress()">+ Shipping Ad</button>
-        <button class="graphbtn" @click="setBillingAddress()">+ Billing Ad</button>
-        <button class="graphbtn" @click="setShippingMethod()">+ Shipping Met</button>
-      </div>
-      <div class="btnarea">
-        <button class="graphbtn" @click="getPaymentMethods()">Get PMs</button>
+        <div class="form-billing-data collapsed">
+          <h2> Billing Address </h2>
+          <form>
+            <label for="fbstreet">Street:</label>
+            <label for="fbpostcode">Postcode</label><br>
+            <input type="text" id="fbstreet" name="fstreet">
+            <input type="text" id="fbpostcode" name="fpostcode"><br>
+            <label for="fbcity">City:</label>
+            <label for="fbregion">Region</label><br>
+            <input type="text" id="fbcity" name="fbcity">
+            <input type="text" id="fbregion" name="fbregion"><br>
+            <label for="fbcountry">Country</label>
+            <input type="text" id="fbcountry" name="fbcountry"><br>
+            <button type='button' @click="setFormBillingAddress()">submit</button>
+          </form>
+        </div>
+        <div class="shipping-method-selector">
+          <h2> Shipping Method Address </h2>
+          <div class="shipping-method-container" v-for="(meth, index) in this.shippingMethods" :key="index">
+            <input type="radio" :id="'smethod-' + index" name="smethod" @change="onCheckBoxChange($event)">
+            <label for="smethod"> {{meth.carrier_title}} - {{meth.method_title}}: + {{meth.amount.value}} {{meth.amount.currency}} </label><br>
+          </div>
+        </div>
       </div>
       <div class="btnarea">
         <button class="graphbtn" @click="placeOrder('cc')">Place Order CC</button>
@@ -51,48 +66,9 @@
       </div>
       <table>
         <tr>
-          <td class="statitle">CartID</td>
-          <td class="statval">{{cartId}}</td>
+          <td>Satetedata</td>
+          <td>{{stateData}}</td>
         </tr>
-        <tr>
-          <td class="statitle">Shipping Address</td>
-          <td class="statval">{{shippingAddress}}</td>
-        </tr>
-        <tr>
-          <td class="statitle">Billing Address</td>
-          <td class="statval">{{billingAddress}}</td>
-        </tr>
-        <tr>
-          <td class="statitle">Shipping Method</td>
-          <td class="statval">{{shippingMethod}}</td>
-        </tr>
-        <tr>
-          <td class="statitle">GuestEmail</td>
-          <td class="statval">{{guestEmail}}</td>
-        </tr>
-        <tr v-if="cartItems.length">
-          <td class="statitle">Cart Items</td>
-          <td class="statval">
-            <table class="nestedtable">
-              <tr v-for="prod in this.cartItems">
-                <td class="statitle"> ({{prod.quantity}}) {{prod.product.name}}</td>
-                <td class="statval">
-                  <button v-on:click="addItemToCart(prod.product)">+</button>
-                  <button v-on:click="">-</button>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <!--         <tr v-if="paymentMethods.length">
-                 <td class="statitle">Payment Methods</td>
-                 <td class="statval">{{paymentMethods}}</td>
-               </tr>
-             <tr>
-                 <td>Satetedata</td>
-                 <td>{{stateData}}</td>
-               </tr> -->
-
         <tr v-if="placeOrderResponse != ''">
           <td class="statitle">Place Order Resp</td>
           <td class="statval">{{orderId}} {{placeOrderResponse.adyen_payment_status.resultCode}}</td>
@@ -147,13 +123,25 @@ export default {
       billingAddress: '',
       shippingMethod: '',
       paymentMethods: [],
+      shippingMethods: [],
       placeOrderResponse: '',
       adyenDetailsResponse: '',
       adyenStatusResponse: '',
       orderId:'',
       stateData:'',
       guestEmail: '',
-      shopperAddress: {
+      shopperBillingAddress: {
+        firstName: '',
+        lastName: '',
+        street: '',
+        city: '',
+        country: '',
+        region: '',
+        postcode: '',
+        country_code: '',
+        phone: '',
+      },
+      shopperShippingAddress: {
         firstName: '',
         lastName: '',
         street: '',
@@ -183,21 +171,22 @@ export default {
     this.redirectResult = urlParams.get('redirectResult');
 
     this.storage()
-
-    //const checkout = await this.createAdyenCheckout();
-    // Create an instance of Drop-in and mount it
-    //checkout.create(this.type).mount(this.$refs[this.type]);
-
-    // await this.setShippingAdress();
-    // await this.setBillingAddress();
-    // await this.setShippingMethod();
-
   },
   methods: {
-    storage(){
+    storage() {
       localStorage.setItem('url', 'https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io');
       localStorage.setItem('bearer', "mbvjlftxgpunwaiqi0tfsn2dhkhxpips");
       this.cartId = localStorage.getItem('cart');
+    },
+
+    async onCheckBoxChange(event) {
+      let method = this.shippingMethods[event.target.id.substring(event.target.id.indexOf('-') + 1)];
+      let response = await this.setShippingMethod(method);
+
+      console.log(response);
+
+      await this.getPaymentMethods();
+
     },
 
     async setFormShopperData() {
@@ -208,40 +197,63 @@ export default {
 
       let response = await this.addGuestToCart(email);
 
+      this.shopperShippingAddress.firstName = firstName;
+      this.shopperShippingAddress.lastName = lastName;
+      this.shopperShippingAddress.phone = phone;
+
+      this.shopperBillingAddress.firstName = firstName;
+      this.shopperBillingAddress.lastName = lastName;
+      this.shopperBillingAddress.phone = phone;
+
       if(response.data.setGuestEmailOnCart.cart){
+        document.getElementsByClassName("form-shopper-data")[0].classList.add("collapsed");
         document.getElementsByClassName("form-shipping-data")[0].classList.remove("collapsed");
-        this.shopperAddress.firstName = firstName;
-        this.shopperAddress.lastName = lastName;
-        this.shopperAddress.phone = phone;
       }
 
     },
 
     async setFormShippingAddress() {
-      this.shopperAddress.street =  document.getElementById('fstreet').value;
-      this.shopperAddress.postcode = document.getElementById('fpostcode').value;
-      this.shopperAddress.city = document.getElementById('fcity').value;
-      this.shopperAddress.region = document.getElementById('fregion').value;
-      this.shopperAddress.country_code = document.getElementById('fcountry').value;
+      this.shopperShippingAddress.street =  document.getElementById('fstreet').value;
+      this.shopperShippingAddress.postcode = document.getElementById('fpostcode').value;
+      this.shopperShippingAddress.city = document.getElementById('fcity').value;
+      this.shopperShippingAddress.region = document.getElementById('fregion').value;
+      this.shopperShippingAddress.country_code = document.getElementById('fcountry').value;
 
       let response = await this.setShippingAdress();
-      console.log(response.data)
 
       if(response.data.setShippingAddressesOnCart.cart){
-        document.getElementsByClassName("form-shipping-data")[0].classList.remove("collapsed");
+        document.getElementsByClassName("form-shipping-data")[0].classList.add("collapsed");
+        if(document.getElementById('samebilling').checked) {
+          this.shopperBillingAddress.street =  document.getElementById('fstreet').value;
+          this.shopperBillingAddress.postcode = document.getElementById('fpostcode').value;
+          this.shopperBillingAddress.city = document.getElementById('fcity').value;
+          this.shopperBillingAddress.region = document.getElementById('fregion').value;
+          this.shopperBillingAddress.country_code = document.getElementById('fcountry').value;
 
+          let response = await this.setBillingAddress();
+
+          if(response.data.setBillingAddressOnCart.cart) {
+            document.getElementsByClassName("form-billing-data")[0].classList.add("collapsed");
+          }
+        }
+        else {
+          document.getElementsByClassName("form-billing-data")[0].classList.remove("collapsed");
+        }
       }
-
     },
 
-    setFormBillingAddress() {
-      let firstName = document.getElementById('fname').value;
-      let lastName = document.getElementById('lname').value;
-      let email = document.getElementById('femail').value;
-      let phone = document.getElementById('fphone').value;
+    async setFormBillingAddress() {
+      this.shopperBillingAddress.street =  document.getElementById('fbstreet').value;
+      this.shopperBillingAddress.postcode = document.getElementById('fbpostcode').value;
+      this.shopperBillingAddress.city = document.getElementById('fbcity').value;
+      this.shopperBillingAddress.region = document.getElementById('fbregion').value;
+      this.shopperBillingAddress.country_code = document.getElementById('fbcountry').value;
 
+      let response = await this.setBillingAddress();
 
-      console.log(firstName + lastName + email + phone);
+      if(response.data.setBillingAddressOnCart.cart){
+        document.getElementsByClassName("form-billing-data")[0].classList.add("collapsed");
+      }
     },
 
     async sendGraphQLReq(host, bearer, data) {
@@ -267,14 +279,6 @@ export default {
         console.error(error);
         alert("Error occurred. Look at console for details");
       }
-    },
-
-    logStatus() {
-      console.log(this.url);
-      console.log(this.bearer);
-      console.log(this.cartId);
-      console.log(this.guestEmail);
-      console.log(this.items);
     },
 
     async addGuestToCart(shopperEmail) {
@@ -307,34 +311,35 @@ export default {
         const bearer = this.bearer;
         const cartId = this.cartId;
 
-        //shippingaddr
         const data = JSON.stringify({
           query: `mutation{setShippingAddressesOnCart(input: {cart_id:` + '"'
             + cartId + '"'
             + `, shipping_addresses: [{address: {firstname:`
-            + '"' + this.shopperAddress.firstName + '"'
+            + '"' + this.shopperShippingAddress.firstName + '"'
             + `, lastname:` + '"'
-            + this.shopperAddress.lastName + '"'
+            + this.shopperShippingAddress.lastName + '"'
             + `, company:`
             + '"' + "Magento"
             + '"'
             + `, street:[`
-            + '"' + this.shopperAddress.street + '"'
+            + '"' + this.shopperShippingAddress.street + '"'
             + `], city:`
-            + '"' + this.shopperAddress.city + '"'
+            + '"' + this.shopperShippingAddress.city + '"'
             + `, region:`
-            + '"' + this.shopperAddress.region + '"'
+            + '"' + this.shopperShippingAddress.region + '"'
             + `, postcode:`
-            + '"' + this.shopperAddress.postcode + '"'
+            + '"' + this.shopperShippingAddress.postcode + '"'
             + `, country_code:`
-            + '"' + this.shopperAddress.country_code + '"'
+            + '"' + this.shopperShippingAddress.country_code + '"'
             + `, telephone:`
-            + '"' + this.shopperAddress.phone + '"'
-            + `, save_in_address_book: false}}]}) {cart {shipping_addresses {firstname lastname company street city region {code label} postcode telephone country { code label }}}}}`,
+            + '"' + this.shopperShippingAddress.phone + '"'
+            + `, save_in_address_book: false}}]}) {cart {shipping_addresses {firstname lastname company street city region {code label} postcode telephone available_shipping_methods { available amount {value currency } carrier_code carrier_title error_message method_code method_title } country { code label }}}}}`,
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.shippingAddress = response.data.setShippingAddressesOnCart.cart.shipping_addresses[0];
+        this.shippingMethods = response.data.setShippingAddressesOnCart.cart.shipping_addresses[0].available_shipping_methods;
+        console.log(this.shippingMethods);
         return response;
 
       } catch (error) {
@@ -349,10 +354,29 @@ export default {
         const bearer = this.bearer;
         const cartId = this.cartId;
 
-        //billingaddre
         const data = JSON.stringify({
-          query: `mutation{setBillingAddressOnCart(input: {cart_id:` + `"` + cartId + `"` + `, billing_address: {address: {firstname: "Bob" lastname: "Roll" company: "Magento" street: ["Magento Pkwy", "Main Street"] city: "New York" region: "TX" postcode: "78753" country_code: "US" telephone: "8675309" save_in_address_book: false} same_as_shipping:true,}}) {cart {billing_address {firstname lastname company street city region { code label} postcode telephone country { code label }}} }}`,
+          query: 'mutation{setBillingAddressOnCart(input: {cart_id:'
+            + '"' + cartId + '"' +
+            ', billing_address: {address: {firstname: '
+            + '"' + this.shopperBillingAddress.firstName + '"'
+            + ', lastname: '
+            + '"' + this.shopperBillingAddress.lastName + '"'
+            + ', company: "Magento" , street: ['
+            + '"' + this.shopperBillingAddress.street + '"'
+            + '], city:'
+            + '"' + this.shopperBillingAddress.city + '"'
+            + ', region:'
+            + '"' + this.shopperBillingAddress.region + '"'
+            + ', postcode:'
+            + '"' + this.shopperBillingAddress.postcode + '"'
+            + ', country_code:'
+            + '"' + this.shopperBillingAddress.country_code + '"'
+            + ', telephone:'
+            + '"' + this.shopperBillingAddress.phone + '"'
+            + ', save_in_address_book: false }, same_as_shipping: true }}) {cart {billing_address {firstname lastname company street city region { code label} postcode telephone country { code label }}} }}',
         });
+
+        // query: `mutation{setBillingAddressOnCart(input: {cart_id:` + `"` + cartId + `"` + `, billing_address: {address: {firstname: "Bob" lastname: "Roll" company: "Magento" street: ["Magento Pkwy", "Main Street"] city: "New York" region: "TX" postcode: "78753" country_code: "US" telephone: "8675309" save_in_address_book: false} same_as_shipping:true,}}) {cart {billing_address {firstname lastname company street city region { code label} postcode telephone country { code label }}} }}`,
 
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.billingAddress = response.data.setBillingAddressOnCart.cart.billing_address;
@@ -364,7 +388,7 @@ export default {
       }
     },
 
-    async setShippingMethod() {
+    async setShippingMethod(method) {
       try {
         const host = this.url;
         const bearer = this.bearer;
@@ -372,7 +396,13 @@ export default {
 
         //set shippingmethod
         const data = JSON.stringify({
-          query: `mutation {setShippingMethodsOnCart( input: { cart_id: ` + `"` + cartId + `"` + `, shipping_methods: [{carrier_code: "tablerate" method_code: "bestway"}]}) {cart { shipping_addresses { selected_shipping_method { carrier_code carrier_title method_code method_title amount { value currency}}}}}}`,
+          query: `mutation {setShippingMethodsOnCart( input: { cart_id: `
+            + `"` + cartId + `"`
+            + `, shipping_methods: [{carrier_code: `
+            + `"` + method.carrier_code + `"`
+            + `, method_code:  `
+            + `"` + method.method_code + `"`
+            + `}]}) {cart { shipping_addresses { selected_shipping_method { carrier_code carrier_title method_code method_title amount { value currency }}}}}}`,
         });
 
         const response = await this.sendGraphQLReq(host, bearer, data);
@@ -532,135 +562,6 @@ export default {
         alert("Error occurred. Look at console for details");
       }
     },
-
-    // Original methods that can still be reused
-    async createAdyenCheckout() {
-      const configuration = {
-        clientKey: localStorage.getItem('clientKey') ,
-        locale: "en_US",
-        environment: "test", // change to live for production
-        showPayButton: true,
-        //session: session,
-        paymentMethodsConfiguration: {
-          ideal: {
-            showImage: true
-          },
-          card: {
-            hasHolderName: true,
-            holderNameRequired: true,
-            name: "Credit or debit card",
-            amount: {
-              value: 1000,
-              currency: "EUR"
-            }
-          },
-          paypal: {
-            amount: {
-              currency: "USD",
-              value: 1000
-            },
-            environment: "test",
-            countryCode: "US"   // Only needed for test. This will be automatically retrieved when you are in production.
-          }
-        },
-        onPaymentCompleted: (result, component) => {
-          console.log("result: " + result);
-          this.handleServerResponse(result, component);
-        },
-        onError: (error, component) => {
-          console.error(error.name, error.message, error.stack, component);
-        }
-      };
-      return new AdyenCheckout(configuration);
-    },
-
-    async finalizeCheckout() {
-      try {
-        // Create AdyenCheckout re-using existing Session
-        const checkout = await this.createAdyenCheckout({id: localStorage.getItem('sessionID')});
-
-        // Submit the extracted redirectResult (to trigger onPaymentCompleted() handler)
-        checkout.submitDetails({details: this.redirectResult});
-
-      } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
-      }
-    },
-
-    async createAdyenCheckout(session) {
-      const configuration = {
-        clientKey: localStorage.getItem('clientKey') ,
-        locale: "en_US",
-        environment: "test", // change to live for production
-        showPayButton: true,
-        session: session,
-        paymentMethodsConfiguration: {
-          ideal: {
-            showImage: true
-          },
-          card: {
-            hasHolderName: true,
-            holderNameRequired: true,
-            name: "Credit or debit card",
-            amount: {
-              value: 1000,
-              currency: "EUR"
-            }
-          },
-          paypal: {
-            amount: {
-              currency: "USD",
-              value: 1000
-            },
-            environment: "test",
-            countryCode: "US"   // Only needed for test. This will be automatically retrieved when you are in production.
-          }
-        },
-        onPaymentCompleted: (result, component) => {
-          console.log("result: " + result);
-          this.handleServerResponse(result, component);
-        },
-        onError: (error, component) => {
-          console.error(error.name, error.message, error.stack, component);
-        }
-      };
-
-      return new AdyenCheckout(configuration);
-    },
-
-    async callServer(url, data) {
-      const res = await fetch(url, {
-        method: "POST",
-        body: data ? JSON.stringify(data) : "",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      return await res.json();
-    },
-
-    async handleServerResponse(res, component) {
-      if (res.action) {
-        component.handleAction(res.action);
-      } else {
-        switch (res.resultCode) {
-          case "Authorised":
-            window.location.href = "/result/success";
-            break;
-          case "Pending":
-          case "Received":
-            window.location.href = "/result/pending";
-            break;
-          case "Refused":
-            window.location.href = "/result/failed";
-            break;
-          default:
-            window.location.href = "/result/error";
-            break;
-        }
-      }
-    }
 
   },
 };
