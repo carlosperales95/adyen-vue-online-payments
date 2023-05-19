@@ -58,11 +58,6 @@
           </div>
         </div>
       </div>
-      <div class="btnarea">
-        <button class="graphbtn" @click="placeOrder('ideal')">Place Order ideal</button>
-        <button class="graphbtn" @click="adyenStatus()">Status</button>
-        <button class="graphbtn" @click="adyenDetails()">Details</button>
-      </div>
       <table>
         <tr>
           <td>Satetedata</td>
@@ -85,10 +80,7 @@
       <div id="dropin-container"></div>
       <div class="container">
         <div class="payment-container">
-          <div class="payment" :ref="`${type}`"></div>
-          <div id="card-container" class="component"></div>
-          <div id="alipay-container" class="component"></div>
-          <div id="paypal-container" class="component"></div>
+
         </div>
       </div>
       <button class="main-button" @click="placeOrder('cc')">Place Order CC</button>
@@ -118,7 +110,7 @@ export default {
       bearer: "mbvjlftxgpunwaiqi0tfsn2dhkhxpips",
       cartId: '',
       cartItems: [],
-      defaultItem : { quantity: 3, sku: "24-MB04"},
+      defaultItem : [],
       shippingAddress: '',
       billingAddress: '',
       shippingMethod: '',
@@ -182,8 +174,6 @@ export default {
     async onCheckBoxChange(event) {
       let method = this.shippingMethods[event.target.id.substring(event.target.id.indexOf('-') + 1)];
       let response = await this.setShippingMethod(method);
-
-      console.log(response);
 
       await this.getPaymentMethods();
 
@@ -339,7 +329,7 @@ export default {
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.shippingAddress = response.data.setShippingAddressesOnCart.cart.shipping_addresses[0];
         this.shippingMethods = response.data.setShippingAddressesOnCart.cart.shipping_addresses[0].available_shipping_methods;
-        console.log(this.shippingMethods);
+
         return response;
 
       } catch (error) {
@@ -466,21 +456,57 @@ export default {
 
       let configs = this.paymentMethods.map(pm => pm.configuration ? configuration['paymentMethodsConfiguration'][JSON.stringify(pm.type)] = pm.configuration : null)
 
-      console.log(configs);
-      console.log(configuration);
-
       const checkout = await AdyenCheckout(configuration);
-      console.log(checkout);
+
       const dropinComponent = checkout.create('dropin').mount('#dropin-container');
 
-      const cardComponent = checkout.create('card', configuration).mount('#card-container');
-      const paypalComponent = checkout.create('paypal', configuration).mount('#paypal-container');
-      //const alipayComponent = checkout.create('alipay', configuration).mount('#alipay-container');
+      console.log(this.paymentMethods);
+
+      this.paymentMethods.map(pm => {
+        let pmWrapper = document.createElement("div")
+        pmWrapper.className = "container-wrapper";
+
+        let pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'weChatPayQR', 'genericgiftcard', 'givex'];
+
+        let pmComp = document.createElement("div");
+        pmComp.className = "component";
+
+        let pmRadio = document.createElement("input");
+        pmRadio.type = "radio";
+        pmRadio.className = "pm-radio";
+        pmRadio.id = "radio-" + pm.type;
+        pmRadio.name = "radiopm";
+
+        let pmLabel = document.createElement("label");
+        pmLabel.className = "pm-label";
+        pmLabel.innerHTML = 'Pay with ' + pm.type;
+        pmLabel.for = "radiopm";
+
+        let pmIcon = document.createElement("img");
+        if(pm.icon){
+          pmIcon.src = pm.icon.url;
+        }
+
+        let pmHead = document.createElement("div");
+        pmHead.className = "pm-header";
+
+        if(!pmExclude.includes(pm.type)) {
+          let parentContainer = document.getElementsByClassName('payment-container')[0];
+          parentContainer.appendChild(pmWrapper);
+          pmWrapper.appendChild(pmHead);
+          pmHead.appendChild(pmRadio);
+          pmHead.appendChild(pmIcon);
+          pmHead.appendChild(pmLabel);
+          pmWrapper.appendChild(pmComp);
+          pmComp.id = pm.type + "-container";
+
+          checkout.create(pm.type, configuration).mount('#' + pm.type + '-container');
+        }
+      });
 
     },
 
     handleOnChange(state, component) {
-      console.log(state)
       this.stateData = state.data;
     },
 
