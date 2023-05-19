@@ -59,7 +59,6 @@
         </div>
       </div>
       <div class="btnarea">
-        <button class="graphbtn" @click="placeOrder('cc')">Place Order CC</button>
         <button class="graphbtn" @click="placeOrder('ideal')">Place Order ideal</button>
         <button class="graphbtn" @click="adyenStatus()">Status</button>
         <button class="graphbtn" @click="adyenDetails()">Details</button>
@@ -87,11 +86,12 @@
       <div class="container">
         <div class="payment-container">
           <div class="payment" :ref="`${type}`"></div>
-          <div id="card-container"></div>
-          <div id="alipay-container"></div>
-          <div id="paypal-container"></div>
+          <div id="card-container" class="component"></div>
+          <div id="alipay-container" class="component"></div>
+          <div id="paypal-container" class="component"></div>
         </div>
       </div>
+      <button class="main-button" @click="placeOrder('cc')">Place Order CC</button>
     </div>
   </div>
 </template>

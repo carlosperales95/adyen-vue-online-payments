@@ -399,7 +399,7 @@ a:hover {
   border-radius: 12px;
   padding-top: 18px;
   padding-bottom: 18px;
-  width: 100%;
+  width: 90%;
   height: 100%;
   flex-direction: column;
   margin-top: 20px;
@@ -609,3 +609,16 @@ form {
 .collapsed form{
   display: none;
 }
+
+.component {
+  margin-bottom: 5%;
+}
+
+.main-button {
+  margin: 2%;
+  padding: 1%;
+  background-color: #3a4a5c;
+  color:#eaf1f1;
+  border-radius: 10px;
+}
+
