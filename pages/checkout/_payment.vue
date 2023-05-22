@@ -80,7 +80,14 @@
       <div id="dropin-container"></div>
       <div class="container">
         <div class="payment-container">
-
+          <div class="container-wrapper" v-for="(pm, index) in this.paymentMethods":key="index">
+            <div class="pm-header">
+              <input type="radio" class="pm-radio" :id="`radio-${index}`" name="radiopm">
+              <img v-if="pm.icon" :src="pm.icon.url" >
+              <label class="pm-label" for="radiopm"> Pay with  {{pm.type}} </label>
+            </div>
+            <div class="component" :id="`${pm.type}-container`"></div>
+          </div>
         </div>
       </div>
       <button class="main-button" @click="placeOrder('cc')">Place Order CC</button>
@@ -177,6 +184,12 @@ export default {
 
       await this.getPaymentMethods();
 
+    },
+
+    onSelectPaymentMethod(event) {
+      console.log("hello");
+      let method = event
+      console.log(method);
     },
 
     async setFormShopperData() {
@@ -463,43 +476,9 @@ export default {
       console.log(this.paymentMethods);
 
       this.paymentMethods.map(pm => {
-        let pmWrapper = document.createElement("div")
-        pmWrapper.className = "container-wrapper";
-
         let pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'weChatPayQR', 'genericgiftcard', 'givex'];
 
-        let pmComp = document.createElement("div");
-        pmComp.className = "component";
-
-        let pmRadio = document.createElement("input");
-        pmRadio.type = "radio";
-        pmRadio.className = "pm-radio";
-        pmRadio.id = "radio-" + pm.type;
-        pmRadio.name = "radiopm";
-
-        let pmLabel = document.createElement("label");
-        pmLabel.className = "pm-label";
-        pmLabel.innerHTML = 'Pay with ' + pm.type;
-        pmLabel.for = "radiopm";
-
-        let pmIcon = document.createElement("img");
-        if(pm.icon){
-          pmIcon.src = pm.icon.url;
-        }
-
-        let pmHead = document.createElement("div");
-        pmHead.className = "pm-header";
-
         if(!pmExclude.includes(pm.type)) {
-          let parentContainer = document.getElementsByClassName('payment-container')[0];
-          parentContainer.appendChild(pmWrapper);
-          pmWrapper.appendChild(pmHead);
-          pmHead.appendChild(pmRadio);
-          pmHead.appendChild(pmIcon);
-          pmHead.appendChild(pmLabel);
-          pmWrapper.appendChild(pmComp);
-          pmComp.id = pm.type + "-container";
-
           checkout.create(pm.type, configuration).mount('#' + pm.type + '-container');
         }
       });
