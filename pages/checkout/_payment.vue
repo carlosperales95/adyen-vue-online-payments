@@ -71,7 +71,6 @@
           </div>
         </div>
       </div>
-      <button class="main-button" @click="placeOrder()">Place Order</button>
     </div>
   </div>
 </template>
@@ -396,7 +395,7 @@ export default {
 
         //get PMs
         const data = JSON.stringify({
-          query: `query getAdyenPaymentMethods($cartId: String!) {adyenPaymentMethods(cart_id: $cartId) {paymentMethodsExtraDetails {type icon { url width height}isOpenInvoice configuration {amount {value currency} currency}} paymentMethodsResponse { paymentMethods { name type brand brands configuration { merchantId merchantName} details { key type items { id name } optional }}}}}`,
+          query: `query getAdyenPaymentMethods($cartId: String!) {adyenPaymentMethods(cart_id: $cartId) {paymentMethodsExtraDetails {type icon { url width height} isOpenInvoice configuration {amount {value currency} currency}} paymentMethodsResponse { paymentMethods { name type brand brands configuration { merchantId merchantName} details { key type items { id name } optional }}}}}`,
           variables: {cartId: cartId},
         });
 
@@ -414,14 +413,10 @@ export default {
 
     async createConfig() {
 
-      const configuration = {
+      let configuration = {
         environment: 'test', //
         clientKey: 'test_Y6ET72GBOBFGXFVJCPAHJTQU4MVGZDSR',
-        countryCode: "NL", // Only needed for test. When live, this is retrieved automatically.
-        //amount: {
-        //  currency: "EUR",
-        //  value: 1000
-        //},
+        countryCode: this.shopperBillingAddress.country_code,
         onPaymentCompleted: (result, component) => {
           console.info(result, component);
         },
@@ -435,16 +430,27 @@ export default {
           card: {
             hasHolderName: true,
             holderNameRequired: true,
+            showPayButton: true,
           },
         }
       };
 
-      let configs = this.paymentMethods.map(pm => pm.configuration ? configuration['paymentMethodsConfiguration'][JSON.stringify(pm.type)] = pm.configuration : null)
+      let configs = this.paymentMethods.map(pm => {
+        if (pm.configuration) {
+          configuration['paymentMethodsConfiguration'][pm.type] = pm.configuration;
+          configuration['paymentMethodsConfiguration'][pm.type]['showPayButton'] = true;
+        }
+      })
+
+      configuration.paymentMethodsConfiguration.ideal['highlightedIssuers'] = ['1121', '1151', '1152', '1153', '1154', '1155', '1156', '1157', '1158', '1159', '1160', '1161', '1162'];
+      configuration.paymentMethodsConfiguration.ideal['issuer'] = "1153";
 
       const checkout = await AdyenCheckout(configuration);
       const dropinComponent = checkout.create('dropin').mount('#dropin-container');
 
       this.checkout = checkout;
+      console.log(this.checkout);
+      console.log(configuration);
 
       this.paymentMethods.map(pm => {
         let pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'weChatPayQR', 'genericgiftcard', 'givex'];
@@ -472,25 +478,27 @@ export default {
         const cartId = this.cartId;
 
         console.log(state);
+        const stateData = JSON.stringify(this.stateData);
+
+        let data = "";
 
         if(state.data.paymentMethod.type === "scheme"){
-          alert("Hoi card pay");
-        }
-
-        var data = "";
-        if(method == 'cc') {
-          const stateData = JSON.stringify(this.stateData);
-          //place order
           data = JSON.stringify({
-            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:` + '"' + "adyen_cc" + '"' + `, adyen_additional_data_cc: { cc_type:` + '"' + "VI" + '"' + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
+            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
+              + '"' + "adyen_cc" + '"'
+              + `, adyen_additional_data_cc: { cc_type:`
+              + '"' + "VI" + '"'
+              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
             variables: {cartId: cartId, stateData: stateData },
           });
-        }
-
-        if (method == 'ideal') {
-          const stateData = "{\"riskData\":{\"clientData\":\"eyJ2ZXJzaW9uIjoiMS4wLjAiLCJkZXZpY2VGaW5nZXJwcmludCI6IkRwcXdVNHpFZE4wMDUwMDAwMDAwMDAwMDAwS1piSVFqNmt6czAwNTU4MjEzMzZjVkI5NGlLekJHeWRJdFhHVURNbUJpeDdSWDNhejgwMDJEU0tnWWczclJMMDAwMDBUSXZqWDFCWHc0blhrQVpBdzljY0RVdzlTYkQ4NGg6NDAiLCJwZXJzaXN0ZW50Q29va2llIjpbIl9ycF91aWQ9MWNhMjYzNjItNWQxYy0yNGZhLTAzMDEtYjQ5YmVkYjI0YWEyIl19\"},\"paymentMethod\":{\"type\":\"ideal\",\"issuer\":\"1154\",\"checkoutAttemptId\":\"b3ffe3e5-80bf-41fa-bece-7a2668de48be1682793487582AADEBA7D0C15A7C6BDAF1295CE7EA7D0B57E7041BADF239021DD50FF61156824\"},\"clientStateDataIndicator\":true}";
+        } else {
+          let brand = state.data.paymentMethod.type;
           data = JSON.stringify({
-            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:` + '"' + "adyen_hpp" + '"' + `, adyen_additional_data_hpp: { brand_code:` + '"' + "ideal" + '"' + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
+            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
+              + '"' + "adyen_hpp" + '"'
+              + `, adyen_additional_data_hpp: { brand_code:`
+              + '"' + brand + '"'
+              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
             variables: {cartId: cartId, stateData: stateData },
           });
         }
