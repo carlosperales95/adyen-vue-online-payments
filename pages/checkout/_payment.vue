@@ -446,9 +446,8 @@ export default {
       configuration.paymentMethodsConfiguration.ideal['issuer'] = "1153";
 
       const checkout = await AdyenCheckout(configuration);
-      const dropinComponent = checkout.create('dropin').mount('#dropin-container');
-
       this.checkout = checkout;
+
       console.log(this.checkout);
       console.log(configuration);
 
@@ -478,16 +477,15 @@ export default {
         const cartId = this.cartId;
 
         console.log(state);
-        const stateData = JSON.stringify(this.stateData);
-
+        const stateData = JSON.stringify(state.data);
         let data = "";
 
-        if(state.data.paymentMethod.type === "scheme"){
+        if (state.data.paymentMethod.type === "scheme"){
           data = JSON.stringify({
             query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
               + '"' + "adyen_cc" + '"'
               + `, adyen_additional_data_cc: { cc_type:`
-              + '"' + "VI" + '"'
+              + '"' + state.data.paymentMethod.brand + '"'
               + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
             variables: {cartId: cartId, stateData: stateData },
           });
@@ -502,20 +500,51 @@ export default {
             variables: {cartId: cartId, stateData: stateData },
           });
         }
+
         const response = await this.sendGraphQLReq(host, bearer, data);
         this.placeOrderResponse = response.data.placeOrder.order;
-        if(!response.data.placeOrder.order.adyen_payment_status.isFinal){
-          console.log(response.data.placeOrder.order.adyen_payment_status.action);
-          this.checkout.createFromAction(JSON.parse(response.data.placeOrder.order.adyen_payment_status.action)).mount('#card-container');
-        }
-
         this.orderId = response.data.placeOrder.order.order_id;
+
+        let paymentStatus = response.data.placeOrder.order.adyen_payment_status;
+
+        if(!paymentStatus.isFinal){
+          console.log(paymentStatus.action);
+          let pmtype = state.data.paymentMethod.type === "scheme" ? "card" : state.data.paymentMethod.type;
+          this.checkout.createFromAction(JSON.parse(paymentStatus.action)).mount('#' + pmtype  + '-container');
+        } else {
+          alert(paymentStatus.resultCode);
+          this.processResult(paymentStatus);
+        }
         return response;
 
       } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
+        this.handlePaymentError(error);
       }
+    },
+
+    processResult(paymentStatus){
+      switch (paymentStatus.resultCode) {
+        case "Authorised":
+          window.location.href = window.location.origin + '/result/success';
+          break;
+        case "Pending":
+        case "Received":
+          window.location.href = window.location.origin + '/result/pending';
+          break;
+        case "Refused":
+          window.location.href = window.location.origin + '/result/failed';
+          break;
+        default:
+          window.location.href = window.location.origin + '/result/error';
+          break;
+      }
+    },
+
+    async handlePaymentError(error){
+      console.error(error);
+      alert("Payment was REFUSED");
+      await this.getPaymentMethods();
+
     },
 
     async adyenDetails(state, component) {
@@ -538,13 +567,13 @@ export default {
         this.adyenDetailsResponse = response.data;
 
         alert(response.data.adyenPaymentDetails.resultCode);
+        this.processResult(response.data.adyenPaymentDetails);
         // { "adyenPaymentDetails": { "isFinal": true, "resultCode": "Authorised", "additionalData": null, "action": null } }
 
         return response;
 
       } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
+        this.handlePaymentError(error);
       }
     },
 
@@ -565,8 +594,7 @@ export default {
         return response;
 
       } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
+        this.handlePaymentError(error);
       }
     },
 
