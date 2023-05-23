@@ -90,17 +90,15 @@ export default {
   },
   data() {
     return {
-      url: "https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io",
-      bearer: "mbvjlftxgpunwaiqi0tfsn2dhkhxpips",
-      clientKey: '',
+      url: "",
+      bearer: "",
+      clientKey: "test_Y6ET72GBOBFGXFVJCPAHJTQU4MVGZDSR",
       cartId: '',
       redirectResult: '',
       checkout: '',
       selectedpm: '',
       paymentMethods: [],
       shippingMethods: [],
-      placeOrderResponse: '',
-      adyenDetailsResponse: '',
       adyenStatusResponse: '',
       orderId:'',
       stateData:'',
@@ -133,6 +131,7 @@ export default {
       title: "Payment page",
     };
   },
+
   asyncData({ route }) {
     return { type: route.params.payment };
   },
@@ -140,33 +139,36 @@ export default {
 
   },
   async mounted() {
-
     const urlParams = new URLSearchParams(window.location.search);
     this.redirectResult = urlParams.get('redirectResult');
 
     this.storage()
   },
+
   methods: {
     storage() {
-      localStorage.setItem('url', 'https://8080-adyenexampl-adyenmagent-7j25ev8o4sr.ws-eu97.gitpod.io');
-      localStorage.setItem('bearer', "mbvjlftxgpunwaiqi0tfsn2dhkhxpips");
+      this.url = localStorage.getItem('url');
+      this.bearer = localStorage.getItem('bearer');
       this.cartId = localStorage.getItem('cart');
     },
 
+    //// HANDLERS
+    // Changing ShippingMethod needs a refresh on PM list using new amount and cart info
     async onCheckBoxChange(event) {
       let method = this.shippingMethods[event.target.id.substring(event.target.id.indexOf('-') + 1)];
       let response = await this.setShippingMethod(method);
 
       await this.getPaymentMethods();
-
     },
 
+    // Refreshing config when selecting new payment method from list
     onSelectPaymentMethod(event) {
       let method = event.target;
-      console.log(method);
       this.createConfig();
     },
 
+    //// FORMS
+    // Save ShopperData form locally and set guest email
     async setFormShopperData() {
       let firstName = document.getElementById('fname').value;
       let lastName = document.getElementById('lname').value;
@@ -190,6 +192,7 @@ export default {
 
     },
 
+    // Save ShippingAddress form locally and set it on cart
     async setFormShippingAddress() {
       this.shopperShippingAddress.street =  document.getElementById('fstreet').value;
       this.shopperShippingAddress.postcode = document.getElementById('fpostcode').value;
@@ -220,6 +223,7 @@ export default {
       }
     },
 
+    // Save ShippingAddress form locally and set it on cart
     async setFormBillingAddress() {
       this.shopperBillingAddress.street =  document.getElementById('fbstreet').value;
       this.shopperBillingAddress.postcode = document.getElementById('fbpostcode').value;
@@ -234,35 +238,188 @@ export default {
       }
     },
 
-    async sendGraphQLReq(host, bearer, data) {
-      try {
-        var response;
-        response = await fetch(host +'/graphql', {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            "Content-Type": "application/json",
-            'Content-Length': data.length,
-            Authorization: 'Bearer '+ bearer,
-            'Origin': 'https://8080-adyenexampl-adyenvueonl-wumtblawveo.ws-eu96.gitpod.io',
-          },
-          body: data,
-        })
-          .then((res) => res.json())
-          //.then((result) => console.log( result))
-          .then(result => response = result)
-        return response;
+    // Create checkout config and mount checkout components
+    async createConfig() {
 
-      } catch (error) {
-        console.error(error);
-        alert("Error occurred. Look at console for details");
+      let configuration = {
+        environment: 'test',
+        clientKey: this.clientKey,
+        countryCode: this.shopperBillingAddress.country_code,
+        onPaymentCompleted: (result, component) => {
+          console.info(result, component);
+        },
+        onChange: this.handleOnChange,
+        onAdditionalDetails: await this.adyenDetails,
+        onError: (error, component) => {
+          console.error(error.name, error.message, error.stack, component);
+        },
+        onSubmit: this.placeOrder,
+        paymentMethodsConfiguration: {
+          card: {
+            hasHolderName: true,
+            holderNameRequired: true,
+            showPayButton: true,
+          },
+        }
+      };
+
+      const pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'wechatpayQR', 'genericgiftcard', 'givex', 'bankTransfer_NL', 'ratepay', 'paypal', 'giftcard', 'eps'];
+      this.paymentMethods = this.paymentMethods.filter((pm, index) => !pmExclude.includes(pm.type));
+      console.log(this.paymentMethods);
+
+      let configs = this.paymentMethods.map(pm => {
+        if (pm.configuration) {
+          configuration['paymentMethodsConfiguration'][pm.type] = pm.configuration;
+          configuration['paymentMethodsConfiguration'][pm.type]['showPayButton'] = true;
+        }
+      });
+
+      // Trying to override ideal issuers to appear
+      configuration.paymentMethodsConfiguration.ideal['highlightedIssuers'] = ['1121', '1151', '1152', '1153', '1154', '1155', '1156', '1157', '1158', '1159', '1160', '1161', '1162'];
+      configuration.paymentMethodsConfiguration.ideal['issuer'] = "1153";
+
+      const checkout = await AdyenCheckout(configuration);
+      this.checkout = checkout;
+
+      // Mount config into each container
+      this.paymentMethods.map((pm, index) => checkout.create(pm.type, configuration).mount('#' + pm.type + '-container'));
+
+    },
+
+    // Function for components onchange listener
+    handleOnChange(state, component) {
+      this.stateData = state.data;
+    },
+
+    handleDetails(state, component){
+      let response = this.adyenDetails();
+    },
+
+    processResult(paymentStatus){
+      localStorage.setItem('orderNumber', this.orderId);
+      localStorage.setItem('resultCode', paymentStatus.resultCode);
+      switch (paymentStatus.resultCode) {
+        case "Authorised":
+          window.location.href = window.location.origin + '/result/success';
+          break;
+        case "Pending":
+        case "Received":
+          window.location.href = window.location.origin + '/result/pending';
+          break;
+        case "Refused":
+          window.location.href = window.location.origin + '/result/failed';
+          break;
+        default:
+          window.location.href = window.location.origin + '/result/error';
+          break;
       }
     },
 
+    async handlePaymentError(error){
+      console.error(error);
+      alert("Payment was REFUSED");
+      await this.getPaymentMethods();
+
+    },
+
+    // Query logic to place an order for an adyen payment
+    async placeOrder(state, component) {
+      try {
+        const cartId = this.cartId;
+        const stateData = JSON.stringify(state.data);
+        let data = "";
+
+        if (state.data.paymentMethod.type === "scheme") {
+          data = JSON.stringify({
+            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
+              + '"' + "adyen_cc" + '"'
+              + `, adyen_additional_data_cc: { cc_type:`
+              + '"' + state.data.paymentMethod.brand + '"'
+              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
+            variables: {cartId: cartId, stateData: stateData },
+          });
+        } else {
+          let brand = state.data.paymentMethod.type;
+          data = JSON.stringify({
+            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
+              + '"' + "adyen_hpp" + '"'
+              + `, adyen_additional_data_hpp: { brand_code:`
+              + '"' + brand + '"'
+              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
+            variables: {cartId: cartId, stateData: stateData },
+          });
+        }
+
+        const response = await this.sendGraphQLReq(data);
+        this.orderId = response.data.placeOrder.order.order_id;
+        let paymentStatus = response.data.placeOrder.order.adyen_payment_status;
+
+        if (!paymentStatus.isFinal) {
+          console.log(paymentStatus.action);
+          let pmtype = state.data.paymentMethod.type === "scheme" ? "card" : state.data.paymentMethod.type;
+          this.checkout.createFromAction(JSON.parse(paymentStatus.action)).mount('#' + pmtype  + '-container');
+        } else {
+          alert(paymentStatus.resultCode);
+          this.processResult(paymentStatus);
+        }
+        return response;
+
+      } catch (error) {
+        this.handlePaymentError(error);
+      }
+    },
+
+    // Query logic to get the adyen details of the transaction
+    async adyenDetails(state, component) {
+      try {
+        const cartId = this.cartId;
+        let orderId = this.orderId;
+
+        let payload = state.data;
+        payload.orderId = orderId;
+        payload = JSON.stringify(payload);
+
+        const data = JSON.stringify({
+          query: `mutation getAdyenPaymentDetails($payload: String!, $cartId: String!) {adyenPaymentDetails(payload: $payload, cart_id: $cartId) {isFinal resultCode additionalData action}}`,
+          variables: {cartId: cartId, payload: payload },
+        });
+
+        const response = await this.sendGraphQLReq(data);
+
+        alert(response.data.adyenPaymentDetails.resultCode);
+        this.processResult(response.data.adyenPaymentDetails);
+        // { "adyenPaymentDetails": { "isFinal": true, "resultCode": "Authorised", "additionalData": null, "action": null } }
+
+        return response;
+
+      } catch (error) {
+        this.handlePaymentError(error);
+      }
+    },
+
+    // Query logic to get the current payment status
+    async adyenStatus() {
+      try {
+        const cartId = this.cartId;
+        const orderId = this.orderId;
+
+        const data = JSON.stringify({
+          query: `query getAdyenPaymentStatus($orderNumber: String!, $cartId: String!) { adyenPaymentStatus(orderNumber: $orderNumber, cartId: $cartId) { isFinal resultCode additionalData action}}`,
+          variables: {cartId: cartId, orderNumber: orderId },
+        });
+
+        const response = await this.sendGraphQLReq(data);
+        this.adyenStatusResponse = response.data.adyenPaymentStatus.resultCode;
+        return response;
+
+      } catch (error) {
+        this.handlePaymentError(error);
+      }
+    },
+
+    // Query logic to set guest email on Cart
     async addGuestToCart(shopperEmail) {
       try {
-        const host = this.url;
-        const bearer = this.bearer;
         const cartId = this.cartId;
 
         const data = JSON.stringify({
@@ -272,7 +429,7 @@ export default {
             + '"' + ' }) {cart { email }}}',
         });
 
-        const response = await this.sendGraphQLReq(host, bearer, data);
+        const response = await this.sendGraphQLReq(data);
 
         return response;
 
@@ -282,10 +439,9 @@ export default {
       }
     },
 
+    // Query logic to set shipping address on Cart
     async setShippingAdress() {
       try {
-        const host = this.url;
-        const bearer = this.bearer;
         const cartId = this.cartId;
 
         const data = JSON.stringify({
@@ -313,7 +469,7 @@ export default {
             + `, save_in_address_book: false}}]}) {cart {shipping_addresses {firstname lastname company street city region {code label} postcode telephone available_shipping_methods { available amount {value currency } carrier_code carrier_title error_message method_code method_title } country { code label }}}}}`,
         });
 
-        const response = await this.sendGraphQLReq(host, bearer, data);
+        const response = await this.sendGraphQLReq(data);
         this.shippingMethods = response.data.setShippingAddressesOnCart.cart.shipping_addresses[0].available_shipping_methods;
 
         return response;
@@ -324,10 +480,9 @@ export default {
       }
     },
 
+    // Query logic to set billing address on Cart
     async setBillingAddress() {
       try {
-        const host = this.url;
-        const bearer = this.bearer;
         const cartId = this.cartId;
 
         const data = JSON.stringify({
@@ -352,7 +507,7 @@ export default {
             + ', save_in_address_book: false }, same_as_shipping: true }}) {cart {billing_address {firstname lastname company street city region { code label} postcode telephone country { code label }}} }}',
         });
 
-        const response = await this.sendGraphQLReq(host, bearer, data);
+        const response = await this.sendGraphQLReq(data);
         return response;
 
       } catch (error) {
@@ -361,10 +516,9 @@ export default {
       }
     },
 
+    // Query logic to set shipping method on Cart
     async setShippingMethod(method) {
       try {
-        const host = this.url;
-        const bearer = this.bearer;
         const cartId = this.cartId;
 
         //set shippingmethod
@@ -378,7 +532,7 @@ export default {
             + `}]}) {cart { shipping_addresses { selected_shipping_method { carrier_code carrier_title method_code method_title amount { value currency }}}}}}`,
         });
 
-        const response = await this.sendGraphQLReq(host, bearer, data);
+        const response = await this.sendGraphQLReq(data);
         return response;
 
       } catch (error) {
@@ -387,19 +541,17 @@ export default {
       }
     },
 
+    // Query logic to get available payment methods based on cart
     async getPaymentMethods() {
       try {
-        const host = this.url;
-        const bearer = this.bearer;
         const cartId = this.cartId;
 
-        //get PMs
         const data = JSON.stringify({
           query: `query getAdyenPaymentMethods($cartId: String!) {adyenPaymentMethods(cart_id: $cartId) {paymentMethodsExtraDetails {type icon { url width height} isOpenInvoice configuration {amount {value currency} currency}} paymentMethodsResponse { paymentMethods { name type brand brands configuration { merchantId merchantName} details { key type items { id name } optional }}}}}`,
           variables: {cartId: cartId},
         });
 
-        const response = await this.sendGraphQLReq(host, bearer, data);
+        const response = await this.sendGraphQLReq(data);
         this.paymentMethods = response.data.adyenPaymentMethods.paymentMethodsExtraDetails;
 
         await this.createConfig();
@@ -411,190 +563,31 @@ export default {
       }
     },
 
-    async createConfig() {
-
-      let configuration = {
-        environment: 'test', //
-        clientKey: 'test_Y6ET72GBOBFGXFVJCPAHJTQU4MVGZDSR',
-        countryCode: this.shopperBillingAddress.country_code,
-        onPaymentCompleted: (result, component) => {
-          console.info(result, component);
-        },
-        onChange: this.handleOnChange,
-        onAdditionalDetails: await this.adyenDetails,
-        onError: (error, component) => {
-          console.error(error.name, error.message, error.stack, component);
-        },
-        onSubmit: this.placeOrder,
-        paymentMethodsConfiguration: {
-          card: {
-            hasHolderName: true,
-            holderNameRequired: true,
-            showPayButton: true,
+    // Function to send any query to graphql endpoint of the host
+    async sendGraphQLReq(data) {
+      try {
+        const host = this.url;
+        const bearer = this.bearer;
+        var response;
+        response = await fetch(host +'/graphql', {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            "Content-Type": "application/json",
+            'Content-Length': data.length,
+            Authorization: 'Bearer '+ bearer,
+            'Origin': 'https://8080-adyenexampl-adyenvueonl-wumtblawveo.ws-eu96.gitpod.io',
           },
-        }
-      };
-
-      let configs = this.paymentMethods.map(pm => {
-        if (pm.configuration) {
-          configuration['paymentMethodsConfiguration'][pm.type] = pm.configuration;
-          configuration['paymentMethodsConfiguration'][pm.type]['showPayButton'] = true;
-        }
-      })
-
-      configuration.paymentMethodsConfiguration.ideal['highlightedIssuers'] = ['1121', '1151', '1152', '1153', '1154', '1155', '1156', '1157', '1158', '1159', '1160', '1161', '1162'];
-      configuration.paymentMethodsConfiguration.ideal['issuer'] = "1153";
-
-      const checkout = await AdyenCheckout(configuration);
-      this.checkout = checkout;
-
-      console.log(this.checkout);
-      console.log(configuration);
-
-      this.paymentMethods.map(pm => {
-        let pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'weChatPayQR', 'genericgiftcard', 'givex'];
-
-        if(!pmExclude.includes(pm.type)) {
-          checkout.create(pm.type, configuration).mount('#' + pm.type + '-container');
-        }
-      });
-
-    },
-
-    handleOnChange(state, component) {
-      this.stateData = state.data;
-    },
-
-    handleDetails(state, component){
-      let response = this.adyenDetails();
-      console.log(response);
-    },
-
-    async placeOrder(state, component) {
-      try {
-        const host = this.url;
-        const bearer = this.bearer;
-        const cartId = this.cartId;
-
-        console.log(state);
-        const stateData = JSON.stringify(state.data);
-        let data = "";
-
-        if (state.data.paymentMethod.type === "scheme"){
-          data = JSON.stringify({
-            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
-              + '"' + "adyen_cc" + '"'
-              + `, adyen_additional_data_cc: { cc_type:`
-              + '"' + state.data.paymentMethod.brand + '"'
-              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
-            variables: {cartId: cartId, stateData: stateData },
-          });
-        } else {
-          let brand = state.data.paymentMethod.type;
-          data = JSON.stringify({
-            query: `mutation setPaymentMethod($cartId: String! $stateData: String!) { setPaymentMethodOnCart( input: { cart_id: $cartId payment_method: { code:`
-              + '"' + "adyen_hpp" + '"'
-              + `, adyen_additional_data_hpp: { brand_code:`
-              + '"' + brand + '"'
-              + `, stateData: $stateData}}}) {cart { selected_payment_method { code title } }} placeOrder( input: { cart_id: $cartId }) { order { order_id adyen_payment_status { isFinal resultCode additionalData action}}}}`,
-            variables: {cartId: cartId, stateData: stateData },
-          });
-        }
-
-        const response = await this.sendGraphQLReq(host, bearer, data);
-        this.placeOrderResponse = response.data.placeOrder.order;
-        this.orderId = response.data.placeOrder.order.order_id;
-
-        let paymentStatus = response.data.placeOrder.order.adyen_payment_status;
-
-        if(!paymentStatus.isFinal){
-          console.log(paymentStatus.action);
-          let pmtype = state.data.paymentMethod.type === "scheme" ? "card" : state.data.paymentMethod.type;
-          this.checkout.createFromAction(JSON.parse(paymentStatus.action)).mount('#' + pmtype  + '-container');
-        } else {
-          alert(paymentStatus.resultCode);
-          this.processResult(paymentStatus);
-        }
+          body: data,
+        })
+          .then((res) => res.json())
+          //.then((result) => console.log( result))
+          .then(result => response = result)
         return response;
 
       } catch (error) {
-        this.handlePaymentError(error);
-      }
-    },
-
-    processResult(paymentStatus){
-      switch (paymentStatus.resultCode) {
-        case "Authorised":
-          window.location.href = window.location.origin + '/result/success';
-          break;
-        case "Pending":
-        case "Received":
-          window.location.href = window.location.origin + '/result/pending';
-          break;
-        case "Refused":
-          window.location.href = window.location.origin + '/result/failed';
-          break;
-        default:
-          window.location.href = window.location.origin + '/result/error';
-          break;
-      }
-    },
-
-    async handlePaymentError(error){
-      console.error(error);
-      alert("Payment was REFUSED");
-      await this.getPaymentMethods();
-
-    },
-
-    async adyenDetails(state, component) {
-      try {
-        const host = this.url;
-        const bearer = this.bearer;
-        const cartId = this.cartId;
-        let orderId = this.orderId;
-
-        let payload = state.data;
-        payload.orderId = orderId;
-        payload = JSON.stringify(payload);
-
-        const data = JSON.stringify({
-          query: `mutation getAdyenPaymentDetails($payload: String!, $cartId: String!) {adyenPaymentDetails(payload: $payload, cart_id: $cartId) {isFinal resultCode additionalData action}}`,
-          variables: {cartId: cartId, payload: payload },
-        });
-
-        const response = await this.sendGraphQLReq(host, bearer, data);
-        this.adyenDetailsResponse = response.data;
-
-        alert(response.data.adyenPaymentDetails.resultCode);
-        this.processResult(response.data.adyenPaymentDetails);
-        // { "adyenPaymentDetails": { "isFinal": true, "resultCode": "Authorised", "additionalData": null, "action": null } }
-
-        return response;
-
-      } catch (error) {
-        this.handlePaymentError(error);
-      }
-    },
-
-    async adyenStatus() {
-      try {
-        const host = this.url;
-        const bearer = this.bearer;
-        const cartId = this.cartId;
-        const orderId = this.orderId;
-
-        const data = JSON.stringify({
-          query: `query getAdyenPaymentStatus($orderNumber: String!, $cartId: String!) { adyenPaymentStatus(orderNumber: $orderNumber, cartId: $cartId) { isFinal resultCode additionalData action}}`,
-          variables: {cartId: cartId, orderNumber: orderId },
-        });
-
-        const response = await this.sendGraphQLReq(host, bearer, data);
-        this.adyenStatusResponse = response.data.adyenPaymentStatus.resultCode;
-        return response;
-
-      } catch (error) {
-        this.handlePaymentError(error);
+        console.error(error);
+        alert("Error occurred. Look at console for details");
       }
     },
 

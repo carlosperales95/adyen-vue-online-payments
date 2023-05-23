@@ -1,6 +1,7 @@
 <template>
   <main class="preview-page">
     <section class="cart">
+
       <div class="store-container">
         <div
           class="item-container"
