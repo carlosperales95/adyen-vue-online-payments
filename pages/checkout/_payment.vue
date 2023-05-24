@@ -100,6 +100,7 @@ export default {
       paymentMethods: [],
       shippingMethods: [],
       adyenStatusResponse: '',
+      paymentMethodsResponse: '',
       orderId:'',
       stateData:'',
       shopperBillingAddress: {
@@ -245,6 +246,7 @@ export default {
         environment: 'test',
         clientKey: this.clientKey,
         countryCode: this.shopperBillingAddress.country_code,
+        paymentMethodsResponse: this.paymentMethodsResponse,
         onPaymentCompleted: (result, component) => {
           console.info(result, component);
         },
@@ -263,20 +265,14 @@ export default {
         }
       };
 
-      const pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'wechatpayQR', 'genericgiftcard', 'givex', 'bankTransfer_NL', 'ratepay', 'paypal', 'giftcard', 'eps'];
+      const pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'wechatpayQR', 'genericgiftcard', 'givex', 'bankTransfer_NL', 'ratepay', 'paypal', 'giftcard', 'eps', 'sepadirectdebit', 'multibanco'];
       this.paymentMethods = this.paymentMethods.filter((pm, index) => !pmExclude.includes(pm.type));
-      console.log(this.paymentMethods);
-
       let configs = this.paymentMethods.map(pm => {
         if (pm.configuration) {
           configuration['paymentMethodsConfiguration'][pm.type] = pm.configuration;
           configuration['paymentMethodsConfiguration'][pm.type]['showPayButton'] = true;
         }
-      });
-
-      // Trying to override ideal issuers to appear
-      configuration.paymentMethodsConfiguration.ideal['highlightedIssuers'] = ['1121', '1151', '1152', '1153', '1154', '1155', '1156', '1157', '1158', '1159', '1160', '1161', '1162'];
-      configuration.paymentMethodsConfiguration.ideal['issuer'] = "1153";
+      })
 
       const checkout = await AdyenCheckout(configuration);
       this.checkout = checkout;
@@ -547,12 +543,13 @@ export default {
         const cartId = this.cartId;
 
         const data = JSON.stringify({
-          query: `query getAdyenPaymentMethods($cartId: String!) {adyenPaymentMethods(cart_id: $cartId) {paymentMethodsExtraDetails {type icon { url width height} isOpenInvoice configuration {amount {value currency} currency}} paymentMethodsResponse { paymentMethods { name type brand brands configuration { merchantId merchantName} details { key type items { id name } optional }}}}}`,
+          query: `query getAdyenPaymentMethods($cartId: String!) {adyenPaymentMethods(cart_id: $cartId) {paymentMethodsExtraDetails {type icon { url width height} isOpenInvoice configuration {amount {value currency} currency}} paymentMethodsResponse { paymentMethods { name type brand brands issuers {id name} configuration { merchantId merchantName} details { key type items { id name } optional }}}}}`,
           variables: {cartId: cartId},
         });
 
         const response = await this.sendGraphQLReq(data);
         this.paymentMethods = response.data.adyenPaymentMethods.paymentMethodsExtraDetails;
+        this.paymentMethodsResponse = response.data.adyenPaymentMethods.paymentMethodsResponse;
 
         await this.createConfig();
         return response;
