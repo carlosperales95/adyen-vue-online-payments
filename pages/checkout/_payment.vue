@@ -58,16 +58,32 @@
           </div>
         </div>
       </div>
-      <div id="dropin-container"></div>
       <div class="container">
         <div class="payment-container">
           <div class="container-wrapper" v-for="(pm, index) in this.paymentMethods":key="index">
-            <div class="pm-header">
-              <input type="radio" class="pm-radio" :id="`radio-${index}`" name="radiopm" :value="pm.type" @change="onSelectPaymentMethod($event)" v-model="selectedpm">
-              <img v-if="pm.icon" :src="pm.icon.url" >
-              <label class="pm-label" for="radiopm"> Pay with  {{pm.type}} </label>
+            <div class="pm-header" v-if="pm.type!='scheme'">
+              <input
+                type="radio"
+                class="pm-radio"
+                :id="`radio-${index}`"
+                name="radiopm"
+                :value="pm.type"
+                @change="onSelectPaymentMethod($event)"
+                v-model="selectedpm"
+              >
+              <img
+                v-if="pm.icon"
+                :src="pm.icon.url"
+              >
+              <label
+                v-if="paymentMethodsResponse.paymentMethods[index]"
+                class="pm-label"
+                for="radiopm"
+              >
+                Pay with  {{paymentMethodsResponse.paymentMethods.filter(m => m.type == pm.type ).length > 0 ? paymentMethodsResponse.paymentMethods.filter(m => m.type == pm.type )[0].name : pm.type}}
+              </label>
             </div>
-            <div class="component" :id="`${pm.type}-container`" v-show="selectedpm === `${pm.type}`"></div>
+            <div class="component" v-if="pm.type!='scheme'" :id="`${pm.type}-container`" v-show="selectedpm === `${pm.type}`"></div>
           </div>
         </div>
       </div>
@@ -257,16 +273,15 @@ export default {
         },
         onSubmit: this.placeOrder,
         paymentMethodsConfiguration: {
-          card: {
-            hasHolderName: true,
-            holderNameRequired: true,
-            showPayButton: true,
-          },
+
         }
       };
 
-      const pmExclude = ['scheme', 'alipay', 'unionpay', 'applepay', 'c_cash', 'wechatpayQR', 'genericgiftcard', 'givex', 'bankTransfer_NL', 'ratepay', 'paypal', 'giftcard', 'eps', 'sepadirectdebit', 'multibanco'];
+      const pmExclude = ['alipay', 'unionpay', 'applepay', 'c_cash', 'wechatpayQR', 'genericgiftcard', 'givex', 'bankTransfer_NL', 'ratepay', 'paypal', 'giftcard', 'eps', 'sepadirectdebit', 'multibanco'];
       this.paymentMethods = this.paymentMethods.filter((pm, index) => !pmExclude.includes(pm.type));
+      this.paymentMethodsResponse.paymentMethods = this.paymentMethodsResponse.paymentMethods.filter((pm, index) => !pmExclude.includes(pm.type));
+      console.log(this.paymentMethods);
+      console.log(this.paymentMethodsResponse.paymentMethods);
       let configs = this.paymentMethods.map(pm => {
         if (pm.configuration) {
           configuration['paymentMethodsConfiguration'][pm.type] = pm.configuration;
@@ -278,11 +293,11 @@ export default {
       this.checkout = checkout;
 
       // Mount config into each container
-      this.paymentMethods.map((pm, index) => checkout.create(pm.type, configuration).mount('#' + pm.type + '-container'));
+      this.paymentMethods.map((pm, index) => pm.type != 'scheme' ? checkout.create(pm.type, configuration).mount('#' + pm.type + '-container') : null);
 
     },
 
-    // Function for components onchange listener
+    // Function for components onchange listener (not used atm but can be used to show changes in state data
     handleOnChange(state, component) {
       this.stateData = state.data;
     },
@@ -550,6 +565,7 @@ export default {
         const response = await this.sendGraphQLReq(data);
         this.paymentMethods = response.data.adyenPaymentMethods.paymentMethodsExtraDetails;
         this.paymentMethodsResponse = response.data.adyenPaymentMethods.paymentMethodsResponse;
+        console.log(this.paymentMethodsResponse.paymentMethods[0].name);
 
         await this.createConfig();
         return response;
